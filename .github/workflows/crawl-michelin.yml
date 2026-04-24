@@ -1,0 +1,53 @@
+name: Crawl — Michelin Guide Korea
+
+on:
+  schedule:
+    - cron: "0 2 * * 1"  # every Monday 02:00 UTC
+  workflow_dispatch:
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    environment: production
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: foodmap
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          pip install -r crawler/requirements.txt
+
+      - name: Run Alembic migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/foodmap
+        run: |
+          cd backend
+          alembic upgrade head
+
+      - name: Run Michelin crawler
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/foodmap
+          KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
+        run: python -m crawler.main --source michelin

@@ -1,0 +1,142 @@
+{
+  "items": [
+    {
+      "id": "1", "name": "라연", "category": "한식",
+      "address": "서울 중구 을지로 30 (롯데호텔서울 38층)",
+      "location": { "lat": 37.5651, "lng": 126.9817 },
+      "thumbnail_url": "https://images.unsplash.com/photo-1590301157890-4810ed352733?w=800",
+      "images": ["https://images.unsplash.com/photo-1590301157890-4810ed352733?w=800"],
+      "sources": [
+        { "source_type": "michelin", "grade": 3, "grade_type": "star" },
+        { "source_type": "blueribbon", "grade": 3, "grade_type": "ribbon" }
+      ],
+      "signature_dishes": [], "distance_m": 200
+    },
+    {
+      "id": "2", "name": "스시 사이토", "category": "일식",
+      "address": "서울 강남구 압구정로 424",
+      "location": { "lat": 37.5255, "lng": 127.0297 },
+      "thumbnail_url": "https://images.unsplash.com/photo-1617196034183-421b4040ed20?w=800",
+      "images": ["https://images.unsplash.com/photo-1617196034183-421b4040ed20?w=800"],
+      "sources": [{ "source_type": "michelin", "grade": 2, "grade_type": "star" }],
+      "signature_dishes": [], "distance_m": 450
+    },
+    {
+      "id": "3", "name": "광화문 국밥", "category": "한식",
+      "address": "서울 종로구 새문안로 92",
+      "location": { "lat": 37.5712, "lng": 126.9761 },
+      "thumbnail_url": "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=800",
+      "images": ["https://images.unsplash.com/photo-1547592166-23ac45744acd?w=800"],
+      "sources": [{ "source_type": "michelin", "grade_type": "bib" }],
+      "signature_dishes": [], "distance_m": 600
+    },
+    {
+      "id": "4", "name": "밍글스", "category": "한식",
+      "address": "서울 강남구 도산대로67길 19",
+      "location": { "lat": 37.5254, "lng": 127.0442 },
+      "thumbnail_url": "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800",
+      "images": [],
+      "sources": [{ "source_type": "michelin", "grade": 3, "grade_type": "star" }],
+      "signature_dishes": [], "distance_m": 800
+    },
+    {
+      "id": "5", "name": "권숙수", "category": "한식",
+      "address": "서울 강남구 압구정로80길 27",
+      "location": { "lat": 37.5244, "lng": 127.0436 },
+      "thumbnail_url": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800",
+      "images": [],
+      "sources": [{ "source_type": "michelin", "grade": 3, "grade_type": "star" }],
+      "signature_dishes": [], "distance_m": 950
+    },
+    {
+      "id": "6", "name": "모수", "category": "한식",
+      "address": "서울 용산구 회나무로44길 3",
+      "location": { "lat": 37.5412, "lng": 126.9962 },
+      "thumbnail_url": "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=800",
+      "images": [],
+      "sources": [{ "source_type": "michelin", "grade": 3, "grade_type": "star" }],
+      "signature_dishes": [], "distance_m": 1200
+    },
+    {
+      "id": "7", "name": "정식당", "category": "한식",
+      "address": "서울 강남구 선릉로158길 11",
+      "location": { "lat": 37.5257, "lng": 127.0411 },
+      "thumbnail_url": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800",
+      "images": [],
+      "sources": [{ "source_type": "michelin", "grade": 2, "grade_type": "star" }],
+      "signature_dishes": [], "distance_m": 1500
+    },
+    {
+      "id": "8", "name": "온지음", "category": "한식",
+      "address": "서울 종로구 북촌로5나길 2",
+      "location": { "lat": 37.5810, "lng": 126.9818 },
+      "thumbnail_url": "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=800",
+      "images": [],
+      "sources": [{ "source_type": "michelin", "grade": 2, "grade_type": "star" }],
+      "signature_dishes": [], "distance_m": 1800
+    },
+    {
+      "id": "9", "name": "주옥", "category": "한식",
+      "address": "서울 강남구 도산대로53길 19",
+      "location": { "lat": 37.5244, "lng": 127.0384 },
+      "thumbnail_url": "https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=800",
+      "images": [],
+      "sources": [{ "source_type": "michelin", "grade": 2, "grade_type": "star" }],
+      "signature_dishes": [], "distance_m": 2100
+    },
+    {
+      "id": "10", "name": "우래옥", "category": "한식",
+      "address": "서울 중구 창경궁로 62-29",
+      "location": { "lat": 37.5682, "lng": 126.9987 },
+      "thumbnail_url": "https://images.unsplash.com/photo-1498654896293-37aacf113fd9?w=800",
+      "images": [],
+      "sources": [{ "source_type": "michelin", "grade_type": "bib" }],
+      "signature_dishes": [], "distance_m": 2400
+    },
+    {
+      "id": "11", "name": "진진", "category": "중식",
+      "address": "서울 마포구 독막로 266",
+      "location": { "lat": 37.5439, "lng": 126.9424 },
+      "thumbnail_url": "https://images.unsplash.com/photo-1563245372-f21724e3856d?w=800",
+      "images": [],
+      "sources": [{ "source_type": "michelin", "grade_type": "bib" }],
+      "signature_dishes": [], "distance_m": 2700
+    },
+    {
+      "id": "12", "name": "임프레션", "category": "양식",
+      "address": "서울 강남구 언주로164길 30",
+      "location": { "lat": 37.5254, "lng": 127.0360 },
+      "thumbnail_url": "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800",
+      "images": [],
+      "sources": [{ "source_type": "michelin", "grade": 2, "grade_type": "star" }],
+      "signature_dishes": [], "distance_m": 3000
+    },
+    {
+      "id": "13", "name": "솔밥", "category": "한식",
+      "address": "서울 종로구 자하문로7길 30",
+      "location": { "lat": 37.5791, "lng": 126.9706 },
+      "thumbnail_url": "https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?w=800",
+      "images": [],
+      "sources": [{ "source_type": "michelin", "grade": 1, "grade_type": "star" }],
+      "signature_dishes": [], "distance_m": 3300
+    },
+    {
+      "id": "14", "name": "알라프리마", "category": "양식",
+      "address": "서울 강남구 언주로168길 22",
+      "location": { "lat": 37.5261, "lng": 127.0353 },
+      "thumbnail_url": "https://images.unsplash.com/photo-1424847651672-bf20a4b0982b?w=800",
+      "images": [],
+      "sources": [{ "source_type": "michelin", "grade": 1, "grade_type": "star" }],
+      "signature_dishes": [], "distance_m": 3600
+    },
+    {
+      "id": "15", "name": "을밀대", "category": "한식",
+      "address": "서울 마포구 백범로 173",
+      "location": { "lat": 37.5475, "lng": 126.9455 },
+      "thumbnail_url": "https://images.unsplash.com/photo-1516100882582-96c3a05fe590?w=800",
+      "images": [],
+      "sources": [{ "source_type": "michelin", "grade_type": "bib" }],
+      "signature_dishes": [], "distance_m": 3900
+    }
+  ]
+}
