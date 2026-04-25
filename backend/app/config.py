@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     KAKAO_REST_API_KEY: str = ""
     INTERNAL_API_SECRET: str = ""
-    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: list[str] = ["*"]
 
 
 settings = Settings()
