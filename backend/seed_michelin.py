@@ -10,8 +10,6 @@ import os
 from app.database import SessionLocal
 from app.models.restaurant import Restaurant, RestaurantSource
 from crawler.utils.geocoder import geocode
-from geoalchemy2.shape import from_shape
-from shapely.geometry import Point
 
 KAKAO_KEY = os.environ.get("KAKAO_REST_API_KEY", "")
 
@@ -78,7 +76,6 @@ async def seed() -> None:
                 category=item["category"],
                 lat=lat,
                 lng=lng,
-                location=from_shape(Point(lng, lat), srid=4326),
             )
             db.add(r)
             db.flush()
