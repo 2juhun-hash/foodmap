@@ -59,8 +59,8 @@ export async function fetchRestaurants(
 }
 
 export async function fetchRestaurantById(id: string): Promise<Restaurant> {
-  const { data } = await client.get<{ restaurant: Restaurant }>(`/api/v1/restaurants/${id}`);
-  return data.restaurant;
+  const { data } = await client.get<Restaurant>(`/api/v1/restaurants/${id}`);
+  return normalizeRestaurant(data);
 }
 
 export async function searchRestaurants(

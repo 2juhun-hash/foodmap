@@ -35,6 +35,6 @@ export const DEFAULT_ZOOM_BY_RADIUS: Record<number, number> = {
   5000: 7,
 };
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
+export const API_BASE_URL = '';
 
 export const PAGE_LIMIT = 20;
