@@ -6,8 +6,6 @@ Create Date: 2026-04-24
 """
 from alembic import op
 import sqlalchemy as sa
-import geoalchemy2
-
 revision = "0001"
 down_revision = None
 branch_labels = None
@@ -15,8 +13,6 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute("CREATE EXTENSION IF NOT EXISTS postgis")
-
     op.create_table(
         "restaurants",
         sa.Column("id", sa.BigInteger, primary_key=True, autoincrement=True),
@@ -28,17 +24,11 @@ def upgrade() -> None:
         sa.Column("phone", sa.String(30), nullable=True),
         sa.Column("lat", sa.Float, nullable=True),
         sa.Column("lng", sa.Float, nullable=True),
-        sa.Column(
-            "location",
-            geoalchemy2.Geography(geometry_type="POINT", srid=4326),
-            nullable=True,
-        ),
         sa.Column("thumbnail_url", sa.Text, nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
     )
     op.create_index("ix_restaurants_kakao_place_id", "restaurants", ["kakao_place_id"])
-    op.create_index("ix_restaurants_location", "restaurants", ["location"], postgresql_using="gist")
 
     op.create_table(
         "restaurant_sources",

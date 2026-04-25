@@ -1,7 +1,6 @@
 from datetime import datetime
 from typing import Optional
 
-from geoalchemy2 import Geography
 from sqlalchemy import (
     BigInteger, Boolean, DateTime, Float, ForeignKey,
     Integer, SmallInteger, String, Text, UniqueConstraint,
@@ -25,9 +24,6 @@ class Restaurant(Base):
     phone: Mapped[Optional[str]] = mapped_column(String(30))
     lat: Mapped[Optional[float]] = mapped_column(Float)
     lng: Mapped[Optional[float]] = mapped_column(Float)
-    location: Mapped[Optional[object]] = mapped_column(
-        Geography(geometry_type="POINT", srid=4326), index=True
-    )
     thumbnail_url: Mapped[Optional[str]] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
