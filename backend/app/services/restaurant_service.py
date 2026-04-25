@@ -1,8 +1,9 @@
 import base64
 import json
+import math
 from typing import Optional
 
-from sqlalchemy import func, literal_column, select, text
+from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.restaurant import Restaurant, RestaurantSource
@@ -10,6 +11,15 @@ from app.schemas.restaurant import RestaurantListResponse, RestaurantSummary, Re
 
 SOURCES_ALL = {"michelin", "blueribon", "sikshin"}
 PAGE_SIZE = 20
+
+
+def _haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    R = 6_371_000
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lng2 - lng1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
 def _encode_cursor(restaurant_id: int, distance_m: float) -> str:
@@ -32,16 +42,17 @@ def get_nearby_restaurants(
     cursor: Optional[str] = None,
     limit: int = PAGE_SIZE,
 ) -> RestaurantListResponse:
-    point = f"ST_SetSRID(ST_MakePoint({lng}, {lat}), 4326)"
-    distance_expr = text(f"ST_Distance(location::geography, {point})")
+    # bounding box pre-filter (1 degree lat ≈ 111km)
+    lat_delta = radius_m / 111_000
+    lng_delta = radius_m / (111_000 * math.cos(math.radians(lat)))
 
     q = (
-        select(
-            Restaurant,
-            literal_column(f"ST_Distance(location::geography, {point})").label("distance_m"),
-        )
+        select(Restaurant)
         .where(
-            text(f"ST_DWithin(location::geography, {point}::geography, {radius_m})")
+            Restaurant.lat.between(lat - lat_delta, lat + lat_delta),
+            Restaurant.lng.between(lng - lng_delta, lng + lng_delta),
+            Restaurant.lat.is_not(None),
+            Restaurant.lng.is_not(None),
         )
         .options(selectinload(Restaurant.sources))
     )
@@ -57,32 +68,35 @@ def get_nearby_restaurants(
                 )
             )
 
+    rows = db.execute(q).scalars().all()
+
+    # exact distance filter + sort in Python
+    with_dist = []
+    for r in rows:
+        d = _haversine_m(lat, lng, r.lat, r.lng)
+        if d <= radius_m:
+            with_dist.append((r, d))
+
+    if sort_by == "distance":
+        with_dist.sort(key=lambda x: (x[1], x[0].id))
+    else:
+        with_dist.sort(key=lambda x: x[0].id)
+
+    # cursor pagination
     if cursor:
         cursor_id, cursor_dist = _decode_cursor(cursor)
         if sort_by == "distance":
-            q = q.where(
-                text(f"ST_Distance(location::geography, {point}) > {cursor_dist}")
-                | (
-                    (text(f"ST_Distance(location::geography, {point}) = {cursor_dist}"))
-                    & (Restaurant.id > cursor_id)
-                )
-            )
+            with_dist = [
+                (r, d) for r, d in with_dist
+                if d > cursor_dist or (d == cursor_dist and r.id > cursor_id)
+            ]
 
-    if sort_by == "distance":
-        q = q.order_by(text(f"ST_Distance(location::geography, {point})"), Restaurant.id)
-    else:
-        q = q.order_by(Restaurant.id)
-
-    rows = db.execute(q.limit(limit + 1)).all()
-
-    has_more = len(rows) > limit
-    rows = rows[:limit]
+    has_more = len(with_dist) > limit
+    with_dist = with_dist[:limit]
 
     items = []
-    for row in rows:
-        r: Restaurant = row[0]
-        dist: float = row[1] or 0.0
-        summary = RestaurantSummary(
+    for r, dist in with_dist:
+        items.append(RestaurantSummary(
             id=r.id,
             name=r.name,
             category=r.category,
@@ -90,10 +104,9 @@ def get_nearby_restaurants(
             lat=r.lat,
             lng=r.lng,
             thumbnail_url=r.thumbnail_url,
-            sources=[s for s in r.sources],
+            sources=list(r.sources),
             distance_m=round(dist, 1),
-        )
-        items.append(summary)
+        ))
 
     next_cursor = None
     if has_more and items:
