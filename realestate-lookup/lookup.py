@@ -368,7 +368,7 @@ def cmd_check(args: argparse.Namespace) -> None:
             body = " ".join(r.text.split())[:250]
             print(f"\n[{name}] HTTP {r.status_code}\n  {body}")
         except Exception as e:
-            print(f"\n[{name}] 연결 실패: {e}")
+            print(f"\n[{name}] 연결 실패: {str(e).replace(key, '***')[:250]}")
     print(
         "\n해석: 200 + <resultCode>00 → 정상 / 403 Forbidden → 해당 API 미신청 또는 승인 반영 대기 /"
         " 401·SERVICE_KEY_IS_NOT_REGISTERED → 키 오류"
