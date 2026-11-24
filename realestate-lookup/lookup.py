@@ -194,24 +194,87 @@ def enrich_trades(raw: pd.DataFrame, prop_type: str) -> pd.DataFrame:
     return out.sort_values("계약일", ascending=False).reset_index(drop=True)
 
 
-def summarize(df: pd.DataFrame) -> pd.DataFrame:
-    """해제거래를 뺀 정상거래 기준 요약."""
-    valid = df[~df["해제거래"]]
+SUMMARY_GROUPS = {
+    "상업업무용": ["건물유형", "건물주용도"],
+    "공장창고등": ["건물유형", "건물주용도"],
+    "토지": ["용도지역", "지목"],
+}
+
+
+def mark_exclusions(df: pd.DataFrame, include_direct: bool) -> pd.DataFrame:
+    """요약에서 뺄 거래에 사유를 표시 (원본 거래는 그대로 남김)."""
+    df = df.copy()
+    reasons = pd.Series("", index=df.index)
+
+    def add(mask, text):
+        nonlocal reasons
+        reasons = reasons.where(~mask, (reasons + ", " + text).str.lstrip(", "))
+
+    add(df["해제거래"], "해제거래")
+    if "지분거래구분" in df.columns:
+        add(df["지분거래구분"].astype(str).str.strip().ne(""), "지분거래")
+    if not include_direct and "거래유형" in df.columns:
+        add(df["거래유형"].astype(str).str.strip().eq("직거래"), "직거래")
+    df.insert(2, "요약제외사유", reasons)
+    return df
+
+
+def summarize(df: pd.DataFrame, prop_type: str) -> pd.DataFrame:
+    """요약제외사유가 없는 거래만으로 그룹별 건수·평단가 요약."""
+    valid = df[df["요약제외사유"] == ""]
     price_cols = [c for c in valid.columns if c.endswith("(만원/평)")]
-    group = "건물주용도" if "건물주용도" in valid.columns else ("지목" if "지목" in valid.columns else None)
-    rows = []
-    groups = [("전체", valid)] + (
-        [(k, g) for k, g in valid.groupby(group)] if group else []
-    )
-    for name, g in groups:
-        row = {"구분": name, "거래건수": len(g), "거래금액 중앙값(만원)": g["거래금액(만원)"].median()}
+    keys = [k for k in SUMMARY_GROUPS.get(prop_type, ["법정동"]) if k in valid.columns]
+
+    def stats(level1, level2, g):
+        row = {"구분1": level1, "구분2": level2, "거래건수": len(g),
+               "거래금액 중앙값(만원)": g["거래금액(만원)"].median() if len(g) else None}
         for c in price_cols:
-            s = g[c].dropna()
-            row[f"{c} 중앙값"] = s.median()
-            row[f"{c} 최소"] = s.min()
-            row[f"{c} 최대"] = s.max()
-        rows.append(row)
-    return pd.DataFrame(rows)
+            s = pd.to_numeric(g[c], errors="coerce").dropna()
+            label = c.replace(" 평단가(만원/평)", "")
+            row[f"{label} 평단가 중앙값"] = s.median() if len(s) else None
+            row[f"{label} 평단가 최소"] = s.min() if len(s) else None
+            row[f"{label} 평단가 최대"] = s.max() if len(s) else None
+        return row
+
+    rows = [stats("전체(참고·유형 혼합)" if "건물유형" in keys else "전체", "", valid)]
+    if keys:
+        for k1, g1 in valid.groupby(keys[0], sort=True):
+            rows.append(stats(k1 or "(미상)", "소계" if len(keys) > 1 else "", g1))
+            if len(keys) > 1:
+                for k2, g2 in g1.groupby(keys[1], sort=True):
+                    rows.append(stats(k1 or "(미상)", k2 or "(미상)", g2))
+    out = pd.DataFrame(rows)
+    num = out.select_dtypes("number").columns
+    out[num] = out[num].round(0)
+    return out
+
+
+def save_excel(sheets: dict, name: str) -> Path:
+    """시트별 저장 + 열 너비·필터·틀고정. openpyxl이 없으면 CSV로 대체."""
+    OUT_DIR.mkdir(exist_ok=True)
+    try:
+        import openpyxl  # noqa: F401
+    except ImportError:
+        print("  (openpyxl 미설치 → CSV로 저장합니다. 엑셀 파일을 원하면: pip install openpyxl)")
+        for sheet, df in sheets.items():
+            path = save_csv(df, f"{name}_{sheet}")
+        return path
+    path = OUT_DIR / f"{name}_{dt.date.today():%Y%m%d}.xlsx"
+    with pd.ExcelWriter(path, engine="openpyxl") as xw:
+        for sheet, df in sheets.items():
+            df.to_excel(xw, sheet_name=sheet, index=False)
+            ws = xw.sheets[sheet]
+            if len(df.columns) > 1:
+                ws.auto_filter.ref = ws.dimensions
+                ws.freeze_panes = "B2"
+            for i, col in enumerate(df.columns, start=1):
+                width = max([len(str(col))] + [len(str(v)) for v in df[col].head(300)]) * 1.6 + 2
+                ws.column_dimensions[ws.cell(1, i).column_letter].width = min(max(width, 8), 60)
+                if "만원" in str(col) or "평단가" in str(col):
+                    for cell in ws.iter_cols(min_col=i, max_col=i, min_row=2):
+                        for c in cell:
+                            c.number_format = "#,##0"
+    return path
 
 
 def cmd_trade(args: argparse.Namespace) -> None:
@@ -234,19 +297,46 @@ def cmd_trade(args: argparse.Namespace) -> None:
         print("조회된 거래가 없습니다. (기간·유형·동 이름, API 활용신청 승인 여부를 확인하세요)")
         return
 
+    df = mark_exclusions(df, args.include_direct)
+    excluded = df[df["요약제외사유"] != ""]
     name = f"실거래_{sigungu_label.replace(' ', '')}{('_' + args.dong) if args.dong else ''}_{args.type}_{args.trade}"
-    path = save_csv(df, name)
-    summary = summarize(df) if args.trade == "매매" else None
+    conditions = pd.DataFrame([
+        ("조회일", f"{dt.date.today():%Y-%m-%d}"),
+        ("지역", f"{sigungu_label} ({sigungu_code})" + (f" / {args.dong}" if args.dong else "")),
+        ("유형", f"{args.type} {args.trade}"),
+        ("기간(계약월)", f"{start} ~ {end}"),
+        ("전체 거래", f"{len(df)}건"),
+        ("요약 반영", f"{len(df) - len(excluded)}건"),
+        ("요약 제외", f"{len(excluded)}건 (" + ", ".join(
+            f"{k} {v}" for k, v in excluded["요약제외사유"].str.split(", ").explode().value_counts().items()) + ")"
+            if len(excluded) else "0건"),
+        ("직거래 처리", "요약에 포함" if args.include_direct else "요약에서 제외 (--include-direct로 포함 가능)"),
+        ("평단가 계산", "거래금액(만원) ÷ (면적㎡ ÷ 3.305785)"),
+        ("주의 1", "최근 1~2개월은 신고기한(계약 후 30일) 때문에 거래가 덜 집계됨"),
+        ("주의 2", "집합건물(호실 거래)의 대지면적은 비어 있어 대지 기준 평단가가 없음"),
+        ("주의 3", "같은 날·같은 지번 다건 거래는 분양·일괄매각일 수 있으니 거래 시트에서 따로 확인"),
+        ("출처", "국토교통부 실거래가 공개시스템 Open API (공공데이터포털)"),
+    ], columns=["항목", "내용"])
 
-    pd.set_option("display.width", 200)
-    pd.set_option("display.max_columns", 20)
-    print(f"\n총 {len(df)}건 (해제거래 {int(df['해제거래'].sum())}건 포함) → {path}")
+    sheets = {"조건": conditions, "거래": df}
+    summary = None
+    if args.trade == "매매":
+        summary = summarize(df, args.type)
+        sheets = {"요약": summary, **sheets}
+    path = save_excel(sheets, name)
+
+    pd.set_option("display.width", 160)
+    pd.set_option("display.max_columns", 12)
+    print(f"\n총 {len(df)}건 · 요약 반영 {len(df) - len(excluded)}건 · 제외 {len(excluded)}건")
+    print(f"저장 → {path}")
     if summary is not None:
-        spath = save_csv(summary, name + "_요약")
-        print(f"요약 → {spath}\n")
-        print(summary.to_string(index=False))
+        cols = [c for c in summary.columns if not c.endswith(("최소", "최대"))]
+        print("\n[요약 — 중앙값 기준, 최소·최대는 파일 참고]")
+        print(summary[cols].to_string(index=False))
+    show = [c for c in ["계약일", "요약제외사유", "법정동", "지번", "건물유형", "건물주용도", "거래금액(만원)",
+                        "건물면적당 평단가(만원/평)", "거래유형"] if c in df.columns]
     print("\n[최근 10건]")
-    print(df.head(10).to_string(index=False))
+    print(df[show].head(10).to_string(index=False))
 
 
 # ---------------------------------------------------------------- 건축물대장
@@ -420,6 +510,7 @@ def main(argv: list[str] | None = None) -> None:
     t.add_argument("--trade", default="매매", choices=["매매", "전월세"])
     t.add_argument("--months", type=int, default=12, help="최근 몇 개월 (기본 12)")
     t.add_argument("--dong", help="법정동으로 좁히기. 예: 서교동")
+    t.add_argument("--include-direct", action="store_true", help="직거래도 요약에 포함 (기본: 제외)")
     t.set_defaults(func=cmd_trade)
 
     l = sub.add_parser("ledger", help="건축물대장 조회")
