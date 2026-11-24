@@ -348,6 +348,33 @@ def cmd_setkey(args: argparse.Namespace) -> None:
     sys.exit("[중단] 3회 실패. 인증키 발급현황 화면을 확인해 주세요.")
 
 
+# ---------------------------------------------------------------- 진단
+def cmd_check(args: argparse.Namespace) -> None:
+    """API별로 직접 1건 요청해 상태코드와 서버 메시지를 보여줌 (키 값은 출력하지 않음)."""
+    import requests
+
+    key = load_service_key()
+    last_month = (dt.date.today().replace(day=1) - dt.timedelta(days=1)).strftime("%Y%m")
+    tests = [
+        ("상업업무용 실거래가", "https://apis.data.go.kr/1613000/RTMSDataSvcNrgTrade/getRTMSDataSvcNrgTrade",
+         {"LAWD_CD": "11440", "DEAL_YMD": last_month, "numOfRows": "1"}),
+        ("건축물대장 표제부", "https://apis.data.go.kr/1613000/BldRgstHubService/getBrTitleInfo",
+         {"sigunguCd": "11440", "bjdongCd": "12000", "numOfRows": "1"}),
+    ]
+    print(f"키: {key[:4]}…{key[-2:]} ({len(key)}자)")
+    for name, url, params in tests:
+        try:
+            r = requests.get(url, params={"serviceKey": key, **params}, timeout=30)
+            body = " ".join(r.text.split())[:250]
+            print(f"\n[{name}] HTTP {r.status_code}\n  {body}")
+        except Exception as e:
+            print(f"\n[{name}] 연결 실패: {e}")
+    print(
+        "\n해석: 200 + <resultCode>00 → 정상 / 403 Forbidden → 해당 API 미신청 또는 승인 반영 대기 /"
+        " 401·SERVICE_KEY_IS_NOT_REGISTERED → 키 오류"
+    )
+
+
 # ---------------------------------------------------------------- CLI
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(description="부동산 공공데이터 조회 (실거래가 / 건축물대장)")
@@ -367,6 +394,9 @@ def main(argv: list[str] | None = None) -> None:
 
     k = sub.add_parser("setkey", help="클립보드의 공공데이터포털 인증키를 .env에 저장")
     k.set_defaults(func=cmd_setkey)
+
+    c = sub.add_parser("check", help="API 연결 진단 (상태코드·서버 메시지 확인)")
+    c.set_defaults(func=cmd_check)
 
     args = p.parse_args(argv)
     if getattr(args, "type", None) in ("상업업무용", "토지", "공장창고등", "분양입주권") and args.trade == "전월세":
