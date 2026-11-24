@@ -68,6 +68,12 @@ def load_service_key() -> str:
             "[오류] 서비스키가 없습니다. 환경변수 DATA_GO_KR_KEY를 설정하거나\n"
             f"       {env_file} 파일에 DATA_GO_KR_KEY=발급받은키 를 저장하세요."
         )
+    if not key.isascii() or len(key) < 30:
+        sys.exit(
+            f"[오류] .env의 서비스키가 올바르지 않습니다 (길이 {len(key)}자"
+            f"{', 한글 포함 — 예시 문구가 그대로 들어간 것 같습니다' if not key.isascii() else ''}).\n"
+            "       공공데이터포털 마이페이지의 '일반 인증키(Decoding)' 값을 그대로 넣으세요."
+        )
     return key
 
 
