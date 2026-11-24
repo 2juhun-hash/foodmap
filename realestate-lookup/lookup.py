@@ -263,15 +263,48 @@ LEDGER_FIELDS = {
 
 
 def _fetch_ledger(api, ledger_type: str, addr: dict) -> pd.DataFrame:
-    try:
-        return api.get_data(
-            ledger_type=ledger_type, sigungu_code=addr["sigungu_code"], bdong_code=addr["bdong_code"],
-            plat_code=addr["plat_code"], bun=addr["bun"], ji=addr["ji"], translate=False,
-            wait_time=1, numOfRows=100,  # 기본값(30초 대기·99999행)은 느림
-        )
-    except Exception as e:  # 개별 대장 실패가 전체를 막지 않도록
-        print(f"  ! {ledger_type} 조회 실패: {e}")
-        return pd.DataFrame()
+    """라이브러리 get_data 대신 직접 호출: https·타임아웃·재시도, 실패 시 서버 메시지 표시."""
+    import time
+
+    import requests
+    import xmltodict
+
+    url = api.meta_dict[ledger_type]["url"].replace("http://", "https://")
+    key = api.service_key
+    params = {
+        "serviceKey": key, "sigunguCd": addr["sigungu_code"], "bjdongCd": addr["bdong_code"],
+        "platGbCd": addr["plat_code"], "bun": addr["bun"].zfill(4), "ji": addr["ji"].zfill(4),
+        "numOfRows": 100, "pageNo": 1,
+    }
+    rows: list[dict] = []
+    while True:
+        res, last_err = None, ""
+        for attempt in range(3):  # 서버가 간헐적으로 느리거나 오류를 내므로 재시도
+            try:
+                res = requests.get(url, params=params, timeout=40)
+                if res.status_code == 200 and "<resultCode>" in res.text:
+                    break
+                last_err = f"HTTP {res.status_code}: {' '.join(res.text.split())[:200]}"
+            except requests.RequestException as e:
+                last_err = str(e).replace(key, "***")[:200]
+            res = None
+            time.sleep(2 * (attempt + 1))
+        if res is None:
+            print(f"  ! {ledger_type} 조회 실패 (3회 시도): {last_err}")
+            return pd.DataFrame(rows)
+        body = xmltodict.parse(res.text)["response"]
+        code = body["header"]["resultCode"]
+        if code not in ("00", "000"):
+            print(f"  ! {ledger_type} 조회 실패: {code} {body['header'].get('resultMsg')}")
+            return pd.DataFrame(rows)
+        items = (body.get("body") or {}).get("items") or {}
+        item = items.get("item") if isinstance(items, dict) else None
+        rows += item if isinstance(item, list) else ([item] if item else [])
+        total = int((body.get("body") or {}).get("totalCount") or 0)
+        if len(rows) >= total or not item:
+            return pd.DataFrame(rows)
+        params["pageNo"] += 1
+        time.sleep(1)
 
 
 def ledger_rows(df: pd.DataFrame, source: str) -> pd.DataFrame:
