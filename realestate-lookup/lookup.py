@@ -267,6 +267,7 @@ def _fetch_ledger(api, ledger_type: str, addr: dict) -> pd.DataFrame:
         return api.get_data(
             ledger_type=ledger_type, sigungu_code=addr["sigungu_code"], bdong_code=addr["bdong_code"],
             plat_code=addr["plat_code"], bun=addr["bun"], ji=addr["ji"], translate=False,
+            wait_time=1, numOfRows=100,  # 기본값(30초 대기·99999행)은 느림
         )
     except Exception as e:  # 개별 대장 실패가 전체를 막지 않도록
         print(f"  ! {ledger_type} 조회 실패: {e}")
