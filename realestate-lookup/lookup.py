@@ -319,6 +319,35 @@ def cmd_ledger(args: argparse.Namespace) -> None:
     )
 
 
+# ---------------------------------------------------------------- 키 저장
+def _read_clipboard() -> str:
+    import subprocess
+
+    for cmd in (["pbpaste"], ["xclip", "-o", "-selection", "clipboard"], ["powershell", "-command", "Get-Clipboard"]):
+        try:
+            return subprocess.run(cmd, capture_output=True, text=True, timeout=5).stdout
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            continue
+    return ""
+
+
+def cmd_setkey(args: argparse.Namespace) -> None:
+    """명령 실행 → 브라우저에서 키 복사 → Enter 순서라 클립보드가 명령어로 덮이지 않음."""
+    for attempt in range(1, 4):
+        input(
+            f"\n[{attempt}/3] 공공데이터포털 '인증키 발급현황'에서 일반 인증키(Decoding)를 복사(⌘+C)한 뒤,\n"
+            "      이 터미널로 돌아와 Enter만 누르세요 (붙여넣기 하지 마세요): "
+        )
+        key = "".join(_read_clipboard().split())
+        if key.isascii() and 30 <= len(key) <= 200 and re.fullmatch(r"[A-Za-z0-9+/=%_-]+", key):
+            (HERE / ".env").write_text(f"DATA_GO_KR_KEY={key}\n", encoding="utf-8")
+            print(f"✔ 저장했습니다: {key[:4]}…{key[-2:]} ({len(key)}자) → {HERE / '.env'}")
+            return
+        preview = key[:12] + ("…" if len(key) > 12 else "")
+        print(f"✘ 클립보드 내용이 인증키가 아닙니다: '{preview}' ({len(key)}자). 키 값만 다시 복사해 주세요.")
+    sys.exit("[중단] 3회 실패. 인증키 발급현황 화면을 확인해 주세요.")
+
+
 # ---------------------------------------------------------------- CLI
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(description="부동산 공공데이터 조회 (실거래가 / 건축물대장)")
@@ -335,6 +364,9 @@ def main(argv: list[str] | None = None) -> None:
     l = sub.add_parser("ledger", help="건축물대장 조회")
     l.add_argument("--address", required=True, help='지번 주소. 예: "서울 마포구 서교동 395-166"')
     l.set_defaults(func=cmd_ledger)
+
+    k = sub.add_parser("setkey", help="클립보드의 공공데이터포털 인증키를 .env에 저장")
+    k.set_defaults(func=cmd_setkey)
 
     args = p.parse_args(argv)
     if getattr(args, "type", None) in ("상업업무용", "토지", "공장창고등", "분양입주권") and args.trade == "전월세":
